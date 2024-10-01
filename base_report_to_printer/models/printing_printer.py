@@ -60,6 +60,7 @@ class PrintingPrinter(models.Model):
     tray_ids = fields.One2many(comodel_name='printing.tray',
                                inverse_name='printer_id',
                                string='Paper Sources')
+    keep_temporary_file = fields.Boolean()
 
     @api.multi
     def _prepare_update_from_cups(self, cups_connection, cups_printer):
@@ -182,10 +183,11 @@ class PrintingPrinter(models.Model):
             file_name,
             self.server_id.address,
         ))
-        try:
-            os.remove(file_name)
-        except OSError as exc:
-            _logger.warning("Unable to remove temporary file %s: %s", file_name, exc)
+        if not self.keep_temporary_file:
+            try:
+                os.remove(file_name)
+            except OSError as exc:
+                _logger.warning("Unable to remove temporary file %s: %s", file_name, exc)
         return True
 
     @api.multi
