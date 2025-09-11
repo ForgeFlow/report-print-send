@@ -10,6 +10,8 @@ from odoo.tests import common
 
 REPORT_TYPES = {"qweb-pdf": "pdf", "qweb-text": "text"}
 
+server_model = "odoo.addons.base_report_to_printer.models.printing_server"
+
 
 class TestReport(common.HttpCase):
     def setUp(self):
@@ -274,3 +276,29 @@ class TestReport(common.HttpCase):
             print_document.assert_called_once_with(
                 self.report, document, doc_format=self.report.report_type, **behaviour
             )
+
+    @mock.patch("%s.cups" % server_model)
+    def test_print_document_printer_extra(self, cups):
+        """
+        It should print the report to the desired printer
+        """
+        self.report.property_printing_action_id.action_type = "server"
+        self.report.printing_printer_id = self.new_printer()
+        forced_printer = self.new_printer()
+        forced_printer.system_name = "Forced Printer"
+        report_type = REPORT_TYPES.get(self.report.report_type)
+        behaviour = self.report.behaviour(**{"printer": forced_printer})
+        behaviour.pop("printer")
+        method_name = "_render_qweb_%s" % (report_type)
+        document, doc_format = getattr(
+            self.report.with_context(must_skip_send_to_printer=True), method_name
+        )(self.report.report_name, self.partners.ids, data=None)
+        behaviour["title"] = self.report.report_name
+        behaviour["res_ids"] = self.partners.ids
+        extras = {
+            "printer": forced_printer,
+        }
+        self.report.print_document(self.partners.ids, **extras)
+        self.assertEqual(
+            "Forced Printer", cups.Connection().printFile.call_args.args[0]
+        )
