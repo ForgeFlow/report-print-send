@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo noupdate="1">
+    <record model="printing.action" id="printing_action_station">
+        <field name="name">Use the computer's print station</field>
+        <field name="action_type">station_default</field>
+    </record>
+</odoo>
