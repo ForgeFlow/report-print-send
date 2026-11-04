@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-name="base_report_to_printer_station.PrintStationSystray" owl="1">
+        <div class="o_print_station_systray d-flex align-items-center px-2">
+            <i class="fa fa-print me-1" />
+            <span t-if="state.name" t-esc="state.name" />
+            <span t-else="" class="opacity-75">Not a print station</span>
+        </div>
+    </t>
+</templates>
