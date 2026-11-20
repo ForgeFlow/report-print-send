@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-name="base_report_to_printer_station.ChooseDialog" owl="1">
+        <Dialog title="'Print station of this computer'" size="'md'">
+            <p>Choose the print station this computer prints at.</p>
+            <div class="list-group">
+                <div
+                    t-foreach="state.stations"
+                    t-as="station"
+                    t-key="station.id"
+                    class="o_print_station_choose_row list-group-item d-flex align-items-center"
+                    t-att-class="{'opacity-50': station.in_use}"
+                >
+                    <div class="flex-grow-1">
+                        <div class="fw-bold" t-esc="station.name" />
+                        <div class="text-muted small" t-esc="station.printer" />
+                    </div>
+                    <span t-if="station.current" class="badge text-bg-success">
+                        This computer
+                    </span>
+                    <span t-elif="station.in_use" class="badge text-bg-secondary">
+                        In use on another computer
+                    </span>
+                    <button
+                        t-else=""
+                        class="btn btn-primary btn-sm o_print_station_choose"
+                        t-att-disabled="state.choosing"
+                        t-on-click="() => this.choose(station)"
+                    >
+                        Use this station
+                    </button>
+                </div>
+                <div t-if="!state.stations.length" class="text-muted">
+                    No print station is set up.
+                </div>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-secondary" t-on-click="props.close">
+                    Cancel
+                </button>
+            </t>
+        </Dialog>
+    </t>
+</templates>

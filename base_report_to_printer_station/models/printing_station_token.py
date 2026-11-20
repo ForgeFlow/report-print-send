@@ -32,6 +32,14 @@ class PrintingStationToken(models.Model):
         ("token_hash_uniq", "UNIQUE(token_hash)", "The token must be unique.")
     ]
 
+    def init(self):
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS printing_station_token_station_active_uniq
+            ON printing_station_token (station_id) WHERE active
+            """
+        )
+
     @api.model
     def _hash_token(self, token):
         return hashlib.sha256(token.encode()).hexdigest()

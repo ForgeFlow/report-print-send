@@ -17,6 +17,7 @@
     ],
     "assets": {
         "web.assets_backend": [
+            "base_report_to_printer_station/static/src/choose_dialog/*",
             "base_report_to_printer_station/static/src/systray/*",
         ],
     },

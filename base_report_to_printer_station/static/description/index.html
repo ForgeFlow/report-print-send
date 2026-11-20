@@ -377,13 +377,13 @@ ul.auto-toc {
 <p><a class="reference external image-reference" href="https://odoo-community.org/page/development-status"><img alt="Beta" src="https://img.shields.io/badge/maturity-Beta-yellow.png" /></a> <a class="reference external image-reference" href="http://www.gnu.org/licenses/agpl-3.0-standalone.html"><img alt="License: AGPL-3" src="https://img.shields.io/badge/license-AGPL--3-blue.png" /></a> <a class="reference external image-reference" href="https://github.com/OCA/report-print-send/tree/16.0/base_report_to_printer_station"><img alt="OCA/report-print-send" src="https://img.shields.io/badge/github-OCA%2Freport--print--send-lightgray.png?logo=github" /></a> <a class="reference external image-reference" href="https://translation.odoo-community.org/projects/report-print-send-16-0/report-print-send-16-0-base_report_to_printer_station"><img alt="Translate me on Weblate" src="https://img.shields.io/badge/weblate-Translate%20me-F47D42.png" /></a> <a class="reference external image-reference" href="https://runboat.odoo-community.org/builds?repo=OCA/report-print-send&amp;target_branch=16.0"><img alt="Try me on Runboat" src="https://img.shields.io/badge/runboat-Try%20me-875A7B.png" /></a></p>
 <p>Send reports to the printer of the computer they are printed from,
 whoever is logged in.</p>
-<p>A print station links one printer to the computers registered for it. A
-supervisor registers a computer once from the station form: Odoo stores
-a random token in a cookie of that browser and keeps only its hash. When
-a report uses the action “Use the computer’s print station”, Odoo reads
-the cookie and sends the report to the station’s printer. A computer
-that is not registered cannot print: the user gets an error and nothing
-is sent to any other printer.</p>
+<p>A print station links one printer to one computer. The first time
+someone prints from a computer, Odoo asks for the station of that
+computer, among the stations no other computer uses. Odoo stores a
+random token in a cookie of that browser and keeps only its hash. When a
+report uses the action “Use the computer’s print station”, Odoo reads
+the cookie and sends the report to the station’s printer. Nothing is
+ever sent to the printer of another station.</p>
 <p>The station of the current computer is shown in the top bar.</p>
 <p><strong>Table of contents</strong></p>
 <div class="contents local topic" id="contents">
@@ -408,26 +408,35 @@ station for each printer. A printer belongs to one station only.</li>
 reports that must print by station. To set it on users instead, set
 those reports to “Use user’s defaults”: by default every report sends
 to the client, which overrides the user’s action.</li>
-<li>On each computer, log in as a Print Manager, open the station and
-click <em>Register this computer</em>. Several computers, or several browser
-profiles of one computer, can be registered for the same station.</li>
 </ol>
-<p>The registration is stored in the browser. It survives logouts and
-changes of user, IP address or network, and it is renewed on every
-print. It is lost when the browser’s cookies are deleted: if a browser
-policy deletes cookies on exit, exempt the Odoo domain.</p>
+<p>Each station is linked to one computer. The first user who prints from a
+computer without a station chooses it from the list of stations; a
+station already linked to another computer is shown as in use and cannot
+be chosen. A Print Manager can also link a computer from the station
+form with <em>Register this computer</em>, which unlinks the computer the
+station had.</p>
+<p>The link is stored in the browser. It survives logouts and changes of
+user, IP address or network, and it is renewed on every print. It is
+lost when the browser’s cookies are deleted: if a browser policy deletes
+cookies on exit, exempt the Odoo domain.</p>
 </div>
 <div class="section" id="usage">
 <h2><a class="toc-backref" href="#toc-entry-2">Usage</a></h2>
 <p>Print as usual. The report goes to the printer of the station shown in
-the top bar.</p>
-<p>To remove a computer, open its station and click <em>Revoke</em> on its line.
-To move a computer to another station, register it again from the new
-station: the old registration is revoked.</p>
+the top bar. On a computer with no station yet, click <em>Choose print
+station</em> in the top bar and pick the station; stations in use on another
+computer are shown but cannot be chosen.</p>
+<p>To free a station, a Print Manager opens it and clicks <em>Revoke</em> on its
+computer line. To move a computer to another station, register it again
+from the new station: the old link is revoked.</p>
 <p>Code that prints without a browser, such as a queued job, passes the
 station in the context key <tt class="docutils literal">printing_station_id</tt>. The context key is
 ignored during an HTTP request, so a client cannot choose a station
 other than the one its cookie belongs to.</p>
+<p>Code that needs the station before printing can return
+<tt class="docutils literal"><span class="pre">env[&quot;printing.station&quot;]._action_choose(records,</span> method)</tt> when there
+is none: the user chooses the station, then the browser calls <tt class="docutils literal">method</tt>
+on <tt class="docutils literal">records</tt> again.</p>
 </div>
 <div class="section" id="bug-tracker">
 <h2><a class="toc-backref" href="#toc-entry-3">Bug Tracker</a></h2>

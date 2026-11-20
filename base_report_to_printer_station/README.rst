@@ -35,13 +35,13 @@ Report to printer by print station
 Send reports to the printer of the computer they are printed from,
 whoever is logged in.
 
-A print station links one printer to the computers registered for it. A
-supervisor registers a computer once from the station form: Odoo stores
-a random token in a cookie of that browser and keeps only its hash. When
-a report uses the action "Use the computer's print station", Odoo reads
-the cookie and sends the report to the station's printer. A computer
-that is not registered cannot print: the user gets an error and nothing
-is sent to any other printer.
+A print station links one printer to one computer. The first time
+someone prints from a computer, Odoo asks for the station of that
+computer, among the stations no other computer uses. Odoo stores a
+random token in a cookie of that browser and keeps only its hash. When a
+report uses the action "Use the computer's print station", Odoo reads
+the cookie and sends the report to the station's printer. Nothing is
+ever sent to the printer of another station.
 
 The station of the current computer is shown in the top bar.
 
@@ -59,29 +59,40 @@ Configuration
    reports that must print by station. To set it on users instead, set
    those reports to "Use user's defaults": by default every report sends
    to the client, which overrides the user's action.
-3. On each computer, log in as a Print Manager, open the station and
-   click *Register this computer*. Several computers, or several browser
-   profiles of one computer, can be registered for the same station.
 
-The registration is stored in the browser. It survives logouts and
-changes of user, IP address or network, and it is renewed on every
-print. It is lost when the browser's cookies are deleted: if a browser
-policy deletes cookies on exit, exempt the Odoo domain.
+Each station is linked to one computer. The first user who prints from a
+computer without a station chooses it from the list of stations; a
+station already linked to another computer is shown as in use and cannot
+be chosen. A Print Manager can also link a computer from the station
+form with *Register this computer*, which unlinks the computer the
+station had.
+
+The link is stored in the browser. It survives logouts and changes of
+user, IP address or network, and it is renewed on every print. It is
+lost when the browser's cookies are deleted: if a browser policy deletes
+cookies on exit, exempt the Odoo domain.
 
 Usage
 =====
 
 Print as usual. The report goes to the printer of the station shown in
-the top bar.
+the top bar. On a computer with no station yet, click *Choose print
+station* in the top bar and pick the station; stations in use on another
+computer are shown but cannot be chosen.
 
-To remove a computer, open its station and click *Revoke* on its line.
-To move a computer to another station, register it again from the new
-station: the old registration is revoked.
+To free a station, a Print Manager opens it and clicks *Revoke* on its
+computer line. To move a computer to another station, register it again
+from the new station: the old link is revoked.
 
 Code that prints without a browser, such as a queued job, passes the
 station in the context key ``printing_station_id``. The context key is
 ignored during an HTTP request, so a client cannot choose a station
 other than the one its cookie belongs to.
+
+Code that needs the station before printing can return
+``env["printing.station"]._action_choose(records, method)`` when there
+is none: the user chooses the station, then the browser calls ``method``
+on ``records`` again.
 
 Bug Tracker
 ===========

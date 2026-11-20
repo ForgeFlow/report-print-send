@@ -1,7 +1,10 @@
 # Copyright 2026 ForgeFlow S.L. (https://www.forgeflow.com)
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from odoo import api, models
+from psycopg2 import IntegrityError
+
+from odoo import _, api, models
+from odoo.exceptions import UserError
 from odoo.http import request
 
 COOKIE_NAME = "printing_station_token"
@@ -42,6 +45,38 @@ class IrHttp(models.AbstractModel):
 
     @api.model
     def _register_print_station(self, station):
-        self._get_print_station_token().action_revoke()
-        token = self.env["printing.station.token"]._create_for_station(station)
+        """A supervisor links this computer to the station, in place of the
+        computer the station had."""
+        Token = self.env["printing.station.token"]
+        (self._get_print_station_token() | station.token_ids).action_revoke()
+        Token.flush_model()
+        self._set_print_station_cookie(Token._create_for_station(station))
+
+    @api.model
+    def _choose_print_station(self, station):
+        """A user links this computer, which has no station yet, to a station
+        no other computer uses."""
+        current = self._get_print_station_token()
+        if current:
+            raise UserError(
+                _(
+                    "This computer already prints at %s.",
+                    current.station_id.name,
+                )
+            )
+        station = station.sudo()
+        if not station.active or station.in_use:
+            raise UserError(_("%s is in use on another computer.", station.name))
+        try:
+            with self.env.cr.savepoint():
+                token = (
+                    self.env["printing.station.token"]
+                    .sudo()
+                    ._create_for_station(station)
+                )
+                self.env["printing.station.token"].flush_model()
+        except IntegrityError as error:
+            raise UserError(
+                _("%s is in use on another computer.", station.name)
+            ) from error
         self._set_print_station_cookie(token)

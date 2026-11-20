@@ -2,9 +2,18 @@
 <templates xml:space="preserve">
     <t t-name="base_report_to_printer_station.PrintStationSystray" owl="1">
         <div class="o_print_station_systray d-flex align-items-center px-2">
-            <i class="fa fa-print me-1" />
-            <span t-if="state.name" t-esc="state.name" />
-            <span t-else="" class="opacity-75">Not a print station</span>
+            <t t-if="state.name">
+                <i class="fa fa-print me-1" role="img" aria-hidden="true" />
+                <span t-esc="state.name" />
+            </t>
+            <button
+                t-else=""
+                class="btn btn-link p-0 o_print_station_systray_choose"
+                t-on-click="openChooser"
+            >
+                <i class="fa fa-print me-1" role="img" aria-hidden="true" />
+                <span class="opacity-75">Choose print station</span>
+            </button>
         </div>
     </t>
 </templates>

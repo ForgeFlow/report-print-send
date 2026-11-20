@@ -39,8 +39,8 @@ class IrActionsReport(models.Model):
         if behaviour.get("station_missing"):
             raise UserError(
                 _(
-                    "This computer is not registered as a print station. "
-                    "Ask a supervisor to register it."
+                    "This computer has no print station. Choose it from the "
+                    "printer icon of the top bar."
                 )
             )
 

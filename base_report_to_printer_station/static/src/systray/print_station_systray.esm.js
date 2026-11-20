@@ -1,16 +1,27 @@
 /** @odoo-module **/
 import {Component, onWillStart, useState} from "@odoo/owl";
+import {useBus, useService} from "@web/core/utils/hooks";
+import {PrintStationChooseDialog} from "../choose_dialog/choose_dialog.esm";
 import {registry} from "@web/core/registry";
-import {useService} from "@web/core/utils/hooks";
 
 export class PrintStationSystray extends Component {
     setup() {
         this.rpc = useService("rpc");
+        this.dialog = useService("dialog");
         this.state = useState({name: false});
-        onWillStart(async () => {
-            const result = await this.rpc("/printing/station/current", {});
-            this.state.name = result.name;
-        });
+        onWillStart(() => this.load());
+        useBus(this.env.bus, "PRINT_STATION:CHANGED", () => this.load());
+    }
+
+    async load() {
+        const result = await this.rpc("/printing/station/current", {});
+        this.state.name = result.name;
+    }
+
+    openChooser() {
+        if (!this.state.name) {
+            this.dialog.add(PrintStationChooseDialog, {});
+        }
     }
 }
 

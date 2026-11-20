@@ -30,4 +30,26 @@ class PrintingStationController(http.Controller):
     @http.route("/printing/station/current", type="json", auth="user")
     def current_station(self):
         station = request.env["ir.http"]._get_print_station()
-        return {"name": station.name if station else False}
+        return {"name": station.sudo().name if station else False}
+
+    @http.route("/printing/station/list", type="json", auth="user")
+    def list_stations(self):
+        current = request.env["ir.http"]._get_print_station()
+        return [
+            {
+                "id": station.id,
+                "name": station.name,
+                "printer": station.printer_id.name,
+                "current": station == current,
+                "in_use": station.in_use and station != current,
+            }
+            for station in request.env["printing.station"].sudo().search([])
+        ]
+
+    @http.route("/printing/station/choose", type="json", auth="user")
+    def choose_station(self, station_id):
+        station = request.env["printing.station"].sudo().browse(int(station_id))
+        if not station.exists():
+            raise NotFound()
+        request.env["ir.http"]._choose_print_station(station)
+        return {"name": station.name}

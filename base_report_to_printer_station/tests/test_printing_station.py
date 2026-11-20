@@ -110,17 +110,20 @@ class TestPrintingStation(HttpCase):
             headers={"Content-Type": "application/json"},
         )
 
-    def _current_station(self):
+    def _json(self, route, **params):
         return self.url_open(
-            "/printing/station/current",
-            data=json.dumps({"jsonrpc": "2.0", "method": "call", "params": {}}),
+            route,
+            data=json.dumps({"jsonrpc": "2.0", "method": "call", "params": params}),
             headers={"Content-Type": "application/json"},
-        ).json()["result"]["name"]
+        ).json()
+
+    def _current_station(self):
+        return self._json("/printing/station/current")["result"]["name"]
 
     def _assert_not_registered(self, response):
         error = response.json()["error"]["data"]
         self.assertEqual(error["name"], "odoo.exceptions.UserError")
-        self.assertIn("not registered", error["message"])
+        self.assertIn("no print station", error["message"])
 
     def _mock_printer(self):
         return mock.patch.object(
@@ -214,7 +217,7 @@ class TestPrintingStation(HttpCase):
             report.print_document(self.partner.ids)
             print_document.assert_called_once()
             self.assertEqual(print_document.call_args.args[0], self.printer)
-            with self.assertRaisesRegex(Exception, "not registered"):
+            with self.assertRaisesRegex(Exception, "no print station"):
                 self.report.print_document(self.partner.ids)
             content, _format = self.report._render_qweb_text(
                 self.report.report_name, self.partner.ids
@@ -229,6 +232,58 @@ class TestPrintingStation(HttpCase):
         )
         self.assertEqual(response.status_code, 403)
         self.assertFalse(self.station.token_ids)
+
+    def test_first_print_chooses_a_free_station(self):
+        bulk = self.Station.create(
+            {"name": "Bulk 1", "printer_id": self.other_printer.id}
+        )
+        self._register_computer()
+        self._login_picker()
+        stations = {
+            row["name"]: row for row in self._json("/printing/station/list")["result"]
+        }
+        self.assertTrue(stations["Single 1"]["in_use"])
+        self.assertFalse(stations["Bulk 1"]["in_use"])
+        error = self._json("/printing/station/choose", station_id=self.station.id)
+        self.assertIn("in use on another computer", error["error"]["data"]["message"])
+        self.assertEqual(len(self.station.token_ids), 1)
+        self._json("/printing/station/choose", station_id=bulk.id)
+        self.assertEqual(self._current_station(), "Bulk 1")
+        self.assertEqual(bulk.token_ids.registered_by_id, self.picker)
+        rows = self._json("/printing/station/list")["result"]
+        self.assertTrue([row for row in rows if row["name"] == "Bulk 1"][0]["current"])
+        error = self._json("/printing/station/choose", station_id=self.station.id)
+        self.assertIn("already prints at Bulk 1", error["error"]["data"]["message"])
+        with self._mock_printer() as print_document:
+            self._call("print_document", [[self.report.id], self.partner.ids])
+        self.assertEqual(print_document.call_args.args[0], self.other_printer)
+
+    def test_supervisor_takes_a_station_from_another_computer(self):
+        self._register_computer()
+        old_registration = self.station.token_ids
+        self.opener.cookies.clear()
+        self._register_computer()
+        self.assertFalse(old_registration.active)
+        self.assertEqual(len(self.station.token_ids), 1)
+
+    def test_action_choose_calls_the_method_again(self):
+        action = self.Station._action_choose(self.partner, "action_archive")
+        self.assertEqual(action["tag"], "printing_station_choose")
+        self.assertEqual(
+            action["params"],
+            {
+                "res_model": "res.partner",
+                "res_ids": self.partner.ids,
+                "method": "action_archive",
+            },
+        )
+
+    @mute_logger("odoo.sql_db")
+    def test_station_has_one_computer(self):
+        self.env["printing.station.token"]._create_for_station(self.station)
+        with self.assertRaises(IntegrityError):
+            self.env["printing.station.token"]._create_for_station(self.station)
+            self.env["printing.station.token"].flush_model()
 
     @mute_logger("odoo.sql_db")
     def test_printer_belongs_to_one_station(self):
