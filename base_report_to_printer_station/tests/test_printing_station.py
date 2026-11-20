@@ -117,6 +117,10 @@ class TestPrintingStation(HttpCase):
             headers={"Content-Type": "application/json"},
         ).json()
 
+    def _listed_stations(self):
+        result = self._json("/printing/station/list")["result"]
+        return result, {row["id"]: row for row in result["stations"]}
+
     def _current_station(self):
         return self._json("/printing/station/current")["result"]["name"]
 
@@ -239,24 +243,43 @@ class TestPrintingStation(HttpCase):
         )
         self._register_computer()
         self._login_picker()
-        stations = {
-            row["name"]: row for row in self._json("/printing/station/list")["result"]
-        }
-        self.assertTrue(stations["Single 1"]["in_use"])
-        self.assertFalse(stations["Bulk 1"]["in_use"])
+        stations = self._listed_stations()[1]
+        self.assertTrue(stations[self.station.id]["in_use"])
+        self.assertFalse(stations[bulk.id]["in_use"])
         error = self._json("/printing/station/choose", station_id=self.station.id)
         self.assertIn("in use on another computer", error["error"]["data"]["message"])
         self.assertEqual(len(self.station.token_ids), 1)
         self._json("/printing/station/choose", station_id=bulk.id)
         self.assertEqual(self._current_station(), "Bulk 1")
         self.assertEqual(bulk.token_ids.registered_by_id, self.picker)
-        rows = self._json("/printing/station/list")["result"]
-        self.assertTrue([row for row in rows if row["name"] == "Bulk 1"][0]["current"])
+        self.assertTrue(self._listed_stations()[1][bulk.id]["current"])
         error = self._json("/printing/station/choose", station_id=self.station.id)
         self.assertIn("already prints at Bulk 1", error["error"]["data"]["message"])
+        self._json("/printing/station/leave")
+        self.assertFalse(self._current_station())
+        self.assertFalse(bulk.in_use)
+        self._json("/printing/station/choose", station_id=bulk.id)
         with self._mock_printer() as print_document:
             self._call("print_document", [[self.report.id], self.partner.ids])
         self.assertEqual(print_document.call_args.args[0], self.other_printer)
+
+    def test_print_manager_releases_a_station_in_use(self):
+        self._register_computer()
+        self._login_picker()
+        result, stations = self._listed_stations()
+        self.assertFalse(result["can_release"])
+        self.assertEqual(
+            stations[self.station.id]["registered_by"],
+            self.env.ref("base.user_admin").name,
+        )
+        self.assertTrue(stations[self.station.id]["last_seen"])
+        error = self._json("/printing/station/release", station_id=self.station.id)
+        self.assertIn("not allowed", error["error"]["data"]["message"])
+        self.assertTrue(self.station.in_use)
+        self.authenticate("admin", "admin")
+        self.assertTrue(self._listed_stations()[0]["can_release"])
+        self._json("/printing/station/release", station_id=self.station.id)
+        self.assertFalse(self.station.in_use)
 
     def test_supervisor_takes_a_station_from_another_computer(self):
         self._register_computer()

@@ -1,7 +1,8 @@
 # Copyright 2026 ForgeFlow S.L. (https://www.forgeflow.com)
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import AccessError
 
 
 class PrintingStation(models.Model):
@@ -43,6 +44,16 @@ class PrintingStation(models.Model):
             "url": "/printing/station/%s/register" % self.id,
             "target": "self",
         }
+
+    @api.model
+    def _user_can_release(self):
+        """Whether the user may unlink a station from the computer it has."""
+        return self.env.user.has_group("base_report_to_printer.printing_group_manager")
+
+    def _release(self):
+        if not self._user_can_release():
+            raise AccessError(_("You are not allowed to release a print station."))
+        self.sudo().token_ids.action_revoke()
 
     @api.model
     def _action_choose(self, records, method):

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-name="base_report_to_printer_station.StationBar" owl="1">
+        <span class="o_print_station_bar d-inline-flex align-items-center ms-2">
+            <i class="fa fa-print me-1" role="img" aria-hidden="true" />
+            <t t-if="state.name">
+                <span class="fw-bold me-2" t-esc="state.name" />
+                <button
+                    class="btn btn-secondary o_print_station_bar_leave"
+                    t-on-click="leave"
+                >
+                    Close station
+                </button>
+            </t>
+            <t t-else="">
+                <span class="text-muted me-2">No print station</span>
+                <button
+                    class="btn btn-secondary o_print_station_bar_choose"
+                    t-on-click="choose"
+                >
+                    Choose station
+                </button>
+            </t>
+        </span>
+    </t>
+</templates>

@@ -9,18 +9,31 @@
                     t-as="station"
                     t-key="station.id"
                     class="o_print_station_choose_row list-group-item d-flex align-items-center"
-                    t-att-class="{'opacity-50': station.in_use}"
+                    t-att-class="{'text-muted': station.in_use}"
                 >
                     <div class="flex-grow-1">
                         <div class="fw-bold" t-esc="station.name" />
                         <div class="text-muted small" t-esc="station.printer" />
+                        <div t-if="station.in_use" class="text-muted small">
+                            Registered by <t t-esc="station.registered_by" />,
+                            last seen <t t-esc="lastSeen(station)" />
+                        </div>
                     </div>
                     <span t-if="station.current" class="badge text-bg-success">
                         This computer
                     </span>
-                    <span t-elif="station.in_use" class="badge text-bg-secondary">
-                        In use on another computer
-                    </span>
+                    <t t-elif="station.in_use">
+                        <span class="badge text-bg-secondary">
+                            In use on another computer
+                        </span>
+                        <button
+                            t-if="state.canRelease"
+                            class="btn btn-secondary btn-sm ms-2 o_print_station_release"
+                            t-on-click="() => this.release(station)"
+                        >
+                            Release
+                        </button>
+                    </t>
                     <button
                         t-else=""
                         class="btn btn-primary btn-sm o_print_station_choose"

@@ -3,7 +3,7 @@
 
 from werkzeug.exceptions import Forbidden, NotFound
 
-from odoo import http
+from odoo import fields, http
 from odoo.http import request
 
 
@@ -34,17 +34,37 @@ class PrintingStationController(http.Controller):
 
     @http.route("/printing/station/list", type="json", auth="user")
     def list_stations(self):
+        Station = request.env["printing.station"]
         current = request.env["ir.http"]._get_print_station()
-        return [
-            {
-                "id": station.id,
-                "name": station.name,
-                "printer": station.printer_id.name,
-                "current": station == current,
-                "in_use": station.in_use and station != current,
-            }
-            for station in request.env["printing.station"].sudo().search([])
-        ]
+        stations = []
+        for station in Station.sudo().search([]):
+            token = station.token_ids[:1]
+            stations.append(
+                {
+                    "id": station.id,
+                    "name": station.name,
+                    "printer": station.printer_id.name,
+                    "current": station == current,
+                    "in_use": station.in_use and station != current,
+                    "registered_by": token.registered_by_id.name,
+                    "last_seen": token.last_seen
+                    and fields.Datetime.to_string(token.last_seen),
+                }
+            )
+        return {"stations": stations, "can_release": Station._user_can_release()}
+
+    @http.route("/printing/station/leave", type="json", auth="user")
+    def leave_station(self):
+        request.env["ir.http"]._get_print_station_token().action_revoke()
+        return True
+
+    @http.route("/printing/station/release", type="json", auth="user")
+    def release_station(self, station_id):
+        station = request.env["printing.station"].sudo().browse(int(station_id))
+        if not station.exists():
+            raise NotFound()
+        station.with_env(request.env)._release()
+        return True
 
     @http.route("/printing/station/choose", type="json", auth="user")
     def choose_station(self, station_id):

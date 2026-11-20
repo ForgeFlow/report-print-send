@@ -1,15 +1,46 @@
 /** @odoo-module **/
 import {Component, onWillStart, useState} from "@odoo/owl";
+import {deserializeDateTime, formatDateTime} from "@web/core/l10n/dates";
+import {ConfirmationDialog} from "@web/core/confirmation_dialog/confirmation_dialog";
 import {Dialog} from "@web/core/dialog/dialog";
+import {_t} from "@web/core/l10n/translation";
 import {registry} from "@web/core/registry";
+import {sprintf} from "@web/core/utils/strings";
 import {useService} from "@web/core/utils/hooks";
 
 export class PrintStationChooseDialog extends Component {
     setup() {
         this.rpc = useService("rpc");
-        this.state = useState({stations: [], choosing: false});
-        onWillStart(async () => {
-            this.state.stations = await this.rpc("/printing/station/list", {});
+        this.dialog = useService("dialog");
+        this.state = useState({stations: [], canRelease: false, choosing: false});
+        onWillStart(() => this.load());
+    }
+
+    async load() {
+        const result = await this.rpc("/printing/station/list", {});
+        this.state.stations = result.stations;
+        this.state.canRelease = result.can_release;
+    }
+
+    lastSeen(station) {
+        return station.last_seen
+            ? formatDateTime(deserializeDateTime(station.last_seen))
+            : "";
+    }
+
+    release(station) {
+        this.dialog.add(ConfirmationDialog, {
+            body: sprintf(
+                _t(
+                    "Release %s? The computer that uses it will have to choose a station again."
+                ),
+                station.name
+            ),
+            confirm: async () => {
+                await this.rpc("/printing/station/release", {station_id: station.id});
+                await this.load();
+            },
+            cancel: () => true,
         });
     }
 
@@ -19,7 +50,7 @@ export class PrintStationChooseDialog extends Component {
             await this.rpc("/printing/station/choose", {station_id: station.id});
         } catch (error) {
             this.state.choosing = false;
-            this.state.stations = await this.rpc("/printing/station/list", {});
+            await this.load();
             throw error;
         }
         this.env.bus.trigger("PRINT_STATION:CHANGED");

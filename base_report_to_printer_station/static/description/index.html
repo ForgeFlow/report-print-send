@@ -426,9 +426,16 @@ cookies on exit, exempt the Odoo domain.</p>
 the top bar. On a computer with no station yet, click <em>Choose print
 station</em> in the top bar and pick the station; stations in use on another
 computer are shown but cannot be chosen.</p>
-<p>To free a station, a Print Manager opens it and clicks <em>Revoke</em> on its
-computer line. To move a computer to another station, register it again
-from the new station: the old link is revoked.</p>
+<p>To free a station, a Print Manager clicks <em>Release</em> next to it in the
+list of stations, or opens it and clicks <em>Revoke</em> on its computer line.
+Modules can let other groups release stations by extending
+<tt class="docutils literal">printing.station._user_can_release</tt>.</p>
+<p>Views can show the station of the computer with the <tt class="docutils literal">PrintStationBar</tt>
+component
+(<tt class="docutils literal">&#64;base_report_to_printer_station/station_bar/station_bar.esm</tt>), which
+also lets the user choose a station or close the one the computer has.
+To move a computer to another station, register it again from the new
+station: the old link is revoked.</p>
 <p>Code that prints without a browser, such as a queued job, passes the
 station in the context key <tt class="docutils literal">printing_station_id</tt>. The context key is
 ignored during an HTTP request, so a client cannot choose a station
